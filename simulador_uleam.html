@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de Ingreso ULEAM 2026</title>
+<style>
+:root{--bg:#f3f5f8;--card:#fff;--ink:#1b2430;--mut:#5d6b7c;--red:#d0021b;--navy:#12305c;--ok:#1b8a4b;--bad:#c62828;--line:#dbe1ea}
+*{box-sizing:border-box}
+body{margin:0;font-family:Georgia,"Times New Roman",serif;background:var(--bg);color:var(--ink);line-height:1.55}
+header{background:var(--navy);color:#fff;padding:14px 20px;border-bottom:4px solid var(--red)}
+header h1{margin:0;font-size:1.2rem;font-weight:700}
+header p{margin:2px 0 0;font-size:.85rem;opacity:.85;font-family:system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:18px 14px 60px;font-family:system-ui,sans-serif}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px;margin-bottom:16px}
+h2{margin:0 0 10px;font-family:Georgia,serif;font-size:1.25rem}
+label{display:block;margin:8px 0}
+input[type=number]{width:70px;padding:6px;font-size:1rem;border:1px solid var(--line);border-radius:6px}
+button{font:inherit;font-size:.95rem;padding:10px 18px;border-radius:6px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer}
+button:hover:not(:disabled){background:#e8eef7}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+button.pri:hover:not(:disabled){background:#a80016}
+button:focus-visible,input:focus-visible{outline:3px solid #f5a623;outline-offset:2px}
+.bar{height:12px;background:#dfe5ee;border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--red);transition:width .25s}
+.meta{display:flex;justify-content:space-between;font-size:.85rem;color:var(--mut);margin:6px 0 14px}
+.topic{font-size:.85rem;color:var(--navy);font-weight:600;margin-bottom:6px}
+.q{font-family:Georgia,serif;font-size:1.15rem;margin:0 0 14px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px;cursor:pointer}
+.opt:hover{background:#f0f4fa}
+.opt.sel{border-color:var(--navy);background:#e8eef7}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.nav .sp{flex:1}
+.score{font-family:Georgia,serif;font-size:2.4rem;color:var(--navy);margin:0}
+.rev{border-left:5px solid var(--line);padding:10px 14px;margin:12px 0;background:#fafbfd;border-radius:0 6px 6px 0}
+.rev.ok{border-color:var(--ok)}.rev.bad{border-color:var(--bad)}
+.ok-t{color:var(--ok);font-weight:600}.bad-t{color:var(--bad);font-weight:600}
+.exp{background:#fff8e1;padding:8px 10px;border-radius:6px;margin-top:6px;font-size:.92rem}
+.dots{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.dots b{width:26px;height:26px;font-size:.75rem;display:grid;place-items:center;border-radius:4px;background:#e5eaf2;cursor:pointer;font-weight:500}
+.dots b.a{background:var(--navy);color:#fff}.dots b.c{outline:3px solid var(--red)}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header><h1>Simulador de Evaluación de Ingreso ULEAM 2026</h1><p>Razonamiento Numérico y Matemática · Práctica sin registro</p></header>
+<main>
+
+<section id="cfg" class="card">
+  <h2>Configura tu simulacro</h2>
+  <p>Cada tema muestra preguntas al azar del banco. Las opciones también cambian de orden en cada intento.</p>
+  <label><input type="checkbox" id="cR" checked> Razonamiento Numérico (11 puntos por pregunta)</label>
+  <label><input type="checkbox" id="cM" checked> Matemática – Conocimiento específico (13 puntos por pregunta)</label>
+  <label>Preguntas por tema: <input type="number" id="npt" min="1" max="10" value="5"> <small id="maxinfo"></small></label>
+  <p><button class="pri" onclick="start()">Iniciar simulacro</button></p>
+</section>
+
+<section id="exam" class="card hide">
+  <div class="bar"><i id="pb"></i></div>
+  <div class="meta"><span id="pc">Respondidas 0 de 0</span><span id="pn"></span></div>
+  <div class="topic" id="tp"></div>
+  <p class="q" id="qt"></p>
+  <div id="ops"></div>
+  <div class="nav">
+    <button id="bPrev" onclick="go(-1)">← Retroceder</button>
+    <button id="bNext" onclick="go(1)">Avanzar →</button>
+    <span class="sp"></span>
+    <button class="pri" onclick="finish()">Finalizar</button>
+  </div>
+  <div class="dots" id="dots"></div>
+</section>
+
+<section id="fin" class="card hide">
+  <h2>¿Terminar el simulacro?</h2>
+  <p id="finMsg"></p>
+  <button onclick="back()">Volver a revisar</button>
+  <button class="pri" onclick="grade()">Calificar</button>
+</section>
+
+<section id="res" class="hide">
+  <div class="card">
+    <h2>Resultado</h2>
+    <p class="score" id="sc"></p>
+    <p id="scd"></p>
+    <div id="byT"></div>
+    <button class="pri" onclick="location.reload()">Nuevo simulacro</button>
+  </div>
+  <div id="rev"></div>
+</section>
+
+</main>
+<script>
+/* ===== BANCO DE PREGUNTAS =====
+Formato: [enunciado, [opciones], índice_correcto(0=A), explicación]
+Para agregar preguntas: añade más filas en el tema correspondiente.
+Para agregar un tema: nuevo objeto con t (nombre), k ('R' o 'M') y q (lista). */
+const BANK=[
+{t:"Ecuaciones lineales",k:"R",q:[
+["Al mezclar 4 kg de café clase A a $6/kg con 6 kg de clase B, la mezcla resulta a $4,80/kg. ¿Cuánto cuesta el kg de clase B?",["$3,50","$4,00","$4,20","$3,80"],1,"24 + 6x = 10(4,80) = 48 → 6x = 24 → x = 4."],
+["La suma de tres números consecutivos es 162. ¿Cuál es el mayor?",["53","54","55","56"],2,"3x + 3 = 162 → x = 53; el mayor es 53 + 2 = 55."],
+["Un padre tiene el triple de la edad de su hijo. Dentro de 10 años la suma de sus edades será 68. ¿Qué edad tiene el hijo?",["12 años","14 años","10 años","16 años"],0,"(h+10) + (3h+10) = 68 → 4h = 48 → h = 12."],
+["El doble de un número aumentado en 15 equivale al triple del número disminuido en 5. ¿Cuál es el número?",["10","20","15","25"],1,"2x + 15 = 3x − 5 → x = 20."],
+["Carlos compró 5 cuadernos y 3 lápices por $19. Cada cuaderno cuesta $3 más que un lápiz. ¿Cuánto cuesta un lápiz?",["$0,50","$1,00","$1,50","$2,00"],0,"5(l+3) + 3l = 19 → 8l = 4 → l = 0,50."]]},
+{t:"Porcentajes",k:"R",q:[
+["Un estudiante hace el 30% de un recorrido en bus, el 45% en bicicleta y el resto caminando. Si caminó 10 km, ¿cuál es el recorrido total?",["35 km","40 km","50 km","60 km"],2,"Caminó 25%. Si 25% = 10 km, el total es 10 × 4 = 50 km."],
+["Un artículo cuesta $120. Se aplica un descuento del 20% y luego un recargo del 10%. ¿Precio final?",["$105,60","$108,00","$96,00","$112,00"],0,"120 × 0,80 = 96; 96 × 1,10 = 105,60."],
+["En un curso de 40 estudiantes, el 60% son mujeres. Si ingresan 10 mujeres más, ¿qué porcentaje del total son mujeres?",["64%","68%","70%","72%"],1,"Mujeres: 24 + 10 = 34. Total: 50. 34/50 = 68%."],
+["El precio de un dispositivo pasa de $500 a $400. ¿Qué porcentaje de descuento se aplicó?",["15%","20%","25%","30%"],1,"100/500 = 20%."],
+["El 15% de N es 45. ¿Cuál es el 40% de N?",["120","100","150","90"],0,"N = 45/0,15 = 300; 40% de 300 = 120."]]},
+{t:"Regla de tres simple",k:"R",q:[
+["Si 8 trabajadores construyen una cerca en 12 horas, ¿cuántas horas tardarán 6 trabajadores?",["14 horas","15 horas","16 horas","18 horas"],2,"Regla inversa: 8 × 12 = 6 × h → h = 16."],
+["Un vehículo consume 6 litros por cada 100 km. ¿Cuántos litros consumirá en 350 km?",["18 L","21 L","24 L","20 L"],1,"350 × 6 / 100 = 21 L."],
+["Para pintar una pared de 45 m² se necesitan 3 galones. ¿Cuántos galones para 105 m²?",["6","7","8","9"],1,"105 × 3 / 45 = 7."],
+["Un tanque se llena en 4 horas con 3 mangueras. ¿Cuánto tardará con 5 mangueras iguales?",["2,4 horas","2,8 horas","3,0 horas","2,0 horas"],0,"Inversa: 3 × 4 = 5t → t = 2,4 h."],
+["Una fotocopiadora imprime 150 hojas en 3 minutos. ¿Cuántas imprimirá en 8 minutos?",["350","400","420","450"],1,"150/3 = 50 hojas/min; 50 × 8 = 400."]]},
+{t:"Conjuntos",k:"R",q:[
+["De 60 estudiantes, 35 prefieren Álgebra, 25 Geometría y 10 ambas. ¿Cuántos no prefieren ninguna?",["8","10","12","15"],1,"Al menos una: 35 + 25 − 10 = 50. Ninguna: 60 − 50 = 10."],
+["De 100 personas, 60 usan la red A, 50 usan B y 20 no usan ninguna. ¿Cuántas usan ambas?",["20","30","40","10"],1,"80 = 60 + 50 − x → x = 30."],
+["U = {1,2,3,4,5,6,7,8} y A = {2,4,6,8}. ¿Cuál es el complemento de A?",["{1,3,5,7}","{1,2,3,4}","{5,6,7,8}","∅"],0,"El complemento contiene los elementos de U que no están en A."],
+["A = {x ∈ N | x es primo y x < 10}, B = {x ∈ N | x es impar y x < 10}. ¿Cuál es A ∩ B?",["{3, 5, 7}","{2, 3, 5, 7}","{1, 3, 5, 7}","{3, 5}"],0,"A = {2,3,5,7}, B = {1,3,5,7,9}. Comunes: {3,5,7}."],
+["Si n(A) = 8, n(B) = 5 y A ∩ B = ∅, ¿cuál es n(A ∪ B)?",["3","8","13","40"],2,"Al ser disjuntos, se suman: 8 + 5 = 13."]]},
+{t:"Fracciones",k:"R",q:[
+["Un comerciante vende la mitad de su mercancía en la mañana y 2/5 del resto en la tarde. ¿Qué fracción del total le queda?",["1/5","3/10","2/5","1/10"],1,"Tarde: 2/5 de 1/2 = 1/5. Vendido: 7/10. Queda 3/10."],
+["¿Cuánto es 3/4 de los 2/5 de 200?",["40","50","60","30"],2,"(3/4)(2/5)(200) = 60."],
+["Un recipiente pierde 1/3 de su contenido y luego se extrae 1/4 del restante. Quedan 18 L. ¿Cuál es la capacidad?",["32 L","36 L","40 L","48 L"],1,"Queda 2/3 × 3/4 = 1/2 de la capacidad. 1/2 = 18 → 36 L."],
+["Resuelve: 2/3 + 5/6 − 1/4",["5/4","7/6","13/12","11/12"],0,"(8 + 10 − 3)/12 = 15/12 = 5/4."],
+["Si repartimos 3/5 de una pizza entre 3 personas en partes iguales, ¿qué fracción de la pizza completa recibe cada una?",["1/5","2/5","1/3","3/10"],0,"(3/5) ÷ 3 = 1/5."]]},
+{t:"Operaciones básicas",k:"R",q:[
+["Se donan 480 cuadernos, 360 esferos y 240 reglas, repartidos por igual entre 12 aulas. ¿Cuánto recibe cada aula?",["40 cuadernos, 30 esferos y 20 reglas","30 cuadernos, 20 esferos y 10 reglas","45 cuadernos, 35 esferos y 25 reglas","40 cuadernos, 25 esferos y 15 reglas"],0,"480/12 = 40; 360/12 = 30; 240/12 = 20."],
+["Calcula: 15 + 5 × 4 − 12 ÷ 3",["23","31","27","19"],1,"Primero × y ÷: 20 y 4. Luego 15 + 20 − 4 = 31."],
+["Un comerciante compra 15 cajas a $12 cada una. Se dañan 2 y vende el resto a $15 la caja. ¿Cuál es su ganancia?",["$15","$20","$25","$30"],0,"Inversión 180; venta 13 × 15 = 195; ganancia 15."],
+["Al dividir un número entre 7 se obtiene cociente 14 y residuo 5. ¿Cuál es el número?",["98","103","105","108"],1,"N = 7 × 14 + 5 = 103."],
+["Calcula: 2⁴ + 3² × 5 − √49",["54","48","52","50"],0,"16 + 45 − 7 = 54."]]},
+{t:"Probabilidad (razonamiento)",k:"R",q:[
+["Al lanzar un dado justo, ¿cuál es la probabilidad de obtener un número primo?",["1/6","1/3","1/2","2/3"],2,"Primos: 2, 3, 5 → 3/6 = 1/2."],
+["En una urna hay 5 bolas rojas, 3 azules y 2 verdes. ¿Probabilidad de que una bola extraída NO sea azul?",["3/10","7/10","1/2","4/5"],1,"7 no azules de 10 → 7/10."],
+["Se lanzan dos monedas. ¿Probabilidad de obtener al menos una cara?",["1/4","1/2","3/4","1"],2,"3 de 4 resultados tienen al menos una cara."],
+["En un curso de 30 estudiantes, 12 juegan fútbol. ¿Probabilidad de que uno elegido al azar NO juegue fútbol?",["2/5","3/5","4/5","1/3"],1,"18/30 = 3/5."],
+["¿Probabilidad de que la suma sea 7 al lanzar dos dados?",["1/6","1/12","5/36","7/36"],0,"6 combinaciones de 36 → 1/6."]]},
+{t:"Proporcionalidad compuesta",k:"R",q:[
+["6 obreros trabajando 8 h diarias construyen un muro en 10 días. ¿Cuántos días tardarán 8 obreros trabajando 6 h diarias?",["8 días","10 días","12 días","15 días"],1,"6·8·10 = 8·6·d → d = 10."],
+["4 máquinas, 6 h al día, imprimen 12.000 libros en 5 días. ¿Cuántos días necesitan 5 máquinas, 8 h al día, para 20.000 libros?",["4 días","5 días","6 días","7 días"],1,"(4·6·5)/12000 = (5·8·d)/20000 → d = 5."],
+["20 caballos comen 400 kg de pienso en 10 días. ¿Cuántos kg necesitan 15 caballos en 12 días?",["360 kg","380 kg","400 kg","420 kg"],0,"Consumo: 2 kg por caballo por día. 15 × 12 × 2 = 360."],
+["Tres grifos abiertos 4 h diarias vierten 2.400 L en 2 días. ¿Cuántos litros verterán 5 grifos, 3 h diarias, en 4 días?",["5.400 L","6.000 L","4.800 L","7.200 L"],1,"2400/(3·4·2) = 100 L por grifo-hora. 5·3·4·100 = 6000."],
+["Nueve grifos tardan 10 horas en llenar 2 piscinas. ¿Cuántas horas tardarán 15 grifos en llenar 4 piscinas iguales?",["12 horas","16 horas","8 horas","10 horas"],0,"(9·10)/2 = (15·h)/4 → 45 = 3,75h → h = 12."]]},
+{t:"Secuencias lógicas",k:"R",q:[
+["Completa: 3, 7, 15, 31, 63, ___",["125","127","129","131"],1,"Cada término = anterior × 2 + 1. 63·2 + 1 = 127."],
+["Completa: 2, 6, 12, 20, 30, 42, ___",["52","54","56","60"],2,"Productos consecutivos: 1×2, 2×3, … 7×8 = 56."],
+["Completa: 80, 40, 44, 22, 26, 13, ___",["17","15","6,5","18"],0,"Alterna ÷2 y +4. 13 + 4 = 17."],
+["Completa: 2, 3, 5, 8, 12, 17, ___",["22","23","24","25"],1,"Diferencias +1, +2, +3, +4, +5; sigue +6 → 23."],
+["Completa: 100, 95, 85, 70, 50, ___",["30","25","20","15"],1,"Restas 5, 10, 15, 20; sigue 25 → 25."]]},
+
+{t:"Números reales",k:"M",q:[
+["Si a < b y c < 0, ¿cuál afirmación es cierta?",["a·c < b·c","a·c > b·c","a + c > b + c","a/c < b/c"],1,"Al multiplicar por un negativo, la desigualdad se invierte."],
+["Simplifica: (x^(3/4) · x^(1/2)) / x^(1/4)",["x","x^(1/2)","x^(3/4)","x²"],0,"3/4 + 1/2 − 1/4 = 1 → x."],
+["Si A = (−3, 5] y B = [2, 8), halla A ∩ B.",["(−3, 8)","[2, 5]","(−3, 2]","(5, 8)"],1,"La intersección va de 2 (incluido) a 5 (incluido)."],
+["Resuelve |2x − 5| = 9.",["x = 7 o x = −2","x = 7 o x = 2","x = −7 o x = 2","x = 5 o x = −4"],0,"2x − 5 = 9 → x = 7; 2x − 5 = −9 → x = −2."],
+["Resuelve 3(x − 2) ≤ 5x + 4.",["[−5, ∞)","(−∞, −5]","[−3, ∞)","(−∞, 5]"],0,"3x − 6 ≤ 5x + 4 → −10 ≤ 2x → x ≥ −5."]]},
+{t:"Ecuaciones y geometría analítica",k:"M",q:[
+["Halla la pendiente de la recta que pasa por A(2, −3) y B(−4, 9).",["−2","2","−1/2","3"],0,"m = (9 − (−3)) / (−4 − 2) = 12/(−6) = −2."],
+["Ecuación de la circunferencia con centro C(3, −2) y radio 5:",["(x−3)² + (y+2)² = 25","(x+3)² + (y−2)² = 25","(x−3)² + (y+2)² = 5","(x+3)² + (y+2)² = 25"],0,"(x − h)² + (y − k)² = r² con h = 3, k = −2, r² = 25."],
+["La parábola x² = 12y tiene vértice en el origen. ¿Cuál es su foco?",["(3, 0)","(0, 3)","(0, −3)","(6, 0)"],1,"4p = 12 → p = 3. Abre hacia arriba: foco (0, 3)."],
+["Soluciones de x² − 7x + 12 = 0:",["3 y 4","−3 y −4","2 y 6","1 y 12"],0,"(x − 3)(x − 4) = 0."],
+["Ecuación de la recta que pasa por P(2, 5) con pendiente 3:",["y = 3x − 1","y = 3x + 1","y = 3x + 5","y = 2x + 3"],0,"y − 5 = 3(x − 2) → y = 3x − 1."]]},
+{t:"Funciones",k:"M",q:[
+["Dominio de f(x) = (2x + 1)/(x² − 9):",["ℝ − {3}","ℝ − {−3, 3}","(3, ∞)","ℝ"],1,"x² − 9 ≠ 0 → x ≠ ±3."],
+["Vértice de f(x) = x² − 6x + 5:",["(3, −4)","(−3, 4)","(3, 4)","(6, 5)"],0,"h = 3; k = f(3) = 9 − 18 + 5 = −4."],
+["Resuelve 3^(2x−1) = 27.",["x = 1","x = 2","x = 3","x = 3/2"],1,"2x − 1 = 3 → x = 2."],
+["Resuelve log₂(x) + log₂(x − 2) = 3.",["x = 4","x = −2","x = 2","x = 8"],0,"x(x − 2) = 8 → x² − 2x − 8 = 0 → x = 4 (x = −2 no cumple el dominio)."],
+["Dominio de f(x) = ln(3x − 6):",["(2, ∞)","[2, ∞)","(0, ∞)","(−∞, 2)"],0,"3x − 6 > 0 → x > 2."]]},
+{t:"Matrices y determinantes",k:"M",q:[
+["Si A = [[2,3],[1,4]] y B = [[5,−1],[0,2]], ¿cuánto es A + B?",["[[7,2],[1,6]]","[[10,−3],[0,8]]","[[7,4],[1,2]]","[[3,4],[1,2]]"],0,"Suma término a término: 2+5, 3−1, 1+0, 4+2."],
+["Determinante de A = [[4,5],[2,3]]:",["22","2","7","12"],1,"4·3 − 5·2 = 2."],
+["A es 2×3 y B es 3×4. ¿Qué dimensión tiene A·B?",["3 × 3","2 × 4","4 × 2","No se pueden multiplicar"],1,"Filas de A × columnas de B = 2 × 4."],
+["Determinante de M = [[1,0,0],[2,3,0],[4,5,6]]:",["18","0","10","24"],0,"Matriz triangular: producto de la diagonal = 1·3·6 = 18."],
+["Si det(A) = 0, ¿qué se puede afirmar de A?",["Es la identidad","No tiene inversa (es singular)","Es simétrica","Tiene dimensión 3×2"],1,"Una matriz cuadrada es invertible solo si su determinante es distinto de cero."]]},
+{t:"Probabilidad y conteo",k:"M",q:[
+["¿De cuántas maneras se pueden ordenar 5 libros distintos en un estante?",["25","60","120","24"],2,"5! = 120."],
+["¿Cuántos grupos de 4 personas se forman con 10 estudiantes?",["210","5040","120","40"],0,"C(10,4) = 210."],
+["¿Cuántas permutaciones tienen las letras de la palabra CASA?",["24","12","6","18"],1,"4!/2! = 12 (la A se repite)."],
+["Una variable X toma 0, 1, 2 con probabilidades 0,2; 0,5 y 0,3. Calcula E(X).",["1,0","1,1","1,2","0,8"],1,"0·0,2 + 1·0,5 + 2·0,3 = 1,1."],
+["¿De cuántas formas se elige presidente, vicepresidente y secretario entre 8 candidatos?",["336","56","512","120"],0,"El orden importa: 8 × 7 × 6 = 336."]]}
+];
+const PTS={R:11,M:13};
+let Q=[],ans=[],cur=0;
+
+const $=id=>document.getElementById(id);
+const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const L="ABCDEFGH";
+const show=id=>["cfg","exam","fin","res"].forEach(s=>$(s).classList.toggle("hide",s!==id));
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+$("maxinfo").textContent="(máx. disponible por tema en este banco: "+Math.min(...BANK.map(b=>b.q.length))+")";
+
+function start(){
+  const n=Math.max(1,parseInt($("npt").value)||5);
+  const kinds=[$("cR").checked&&"R",$("cM").checked&&"M"].filter(Boolean);
+  if(!kinds.length){alert("Selecciona al menos una sección.");return}
+  Q=[];
+  BANK.filter(b=>kinds.includes(b.k)).forEach(b=>{
+    shuf(b.q).slice(0,n).forEach(([q,o,c,e])=>{
+      const idx=shuf(o.map((_,i)=>i));
+      Q.push({t:b.t,k:b.k,q,o:idx.map(i=>o[i]),c:idx.indexOf(c),e});
+    });
+  });
+  ans=Q.map(()=>null);cur=0;show("exam");render();
+}
+
+function render(){
+  const x=Q[cur];
+  $("tp").textContent=x.t;
+  $("qt").textContent=(cur+1)+". "+x.q;
+  $("ops").innerHTML=x.o.map((t,i)=>`<div class="opt ${ans[cur]===i?"sel":""}" onclick="pick(${i})" role="radio" tabindex="0" aria-checked="${ans[cur]===i}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pick(${i})}"><b>${L[i]})</b><span>${esc(t)}</span></div>`).join("");
+  $("bPrev").disabled=cur===0;$("bNext").disabled=cur===Q.length-1;
+  progress();
+}
+function progress(){
+  const done=ans.filter(a=>a!==null).length;
+  $("pb").style.width=(done/Q.length*100)+"%";
+  $("pc").textContent="Respondidas "+done+" de "+Q.length;
+  $("pn").textContent="Pregunta "+(cur+1)+" / "+Q.length;
+  $("dots").innerHTML=Q.map((_,i)=>`<b class="${ans[i]!==null?"a":""} ${i===cur?"c":""}" onclick="cur=${i};render()">${i+1}</b>`).join("");
+}
+function pick(i){ans[cur]=i;render()}
+function go(d){cur=Math.min(Q.length-1,Math.max(0,cur+d));render()}
+function finish(){
+  const un=ans.filter(a=>a===null).length;
+  $("finMsg").textContent=un?`Te faltan ${un} pregunta(s) sin responder. Puedes volver a revisarlas o calificar ahora.`:"Respondiste todas las preguntas. ¿Calificar ahora?";
+  show("fin");
+}
+function back(){show("exam");render()}
+
+function grade(){
+  let got=0,max=0;const by={};
+  Q.forEach((x,i)=>{
+    const ok=ans[i]===x.c;max+=PTS[x.k];if(ok)got+=PTS[x.k];
+    by[x.t]=by[x.t]||{a:0,n:0};by[x.t].n++;if(ok)by[x.t].a++;
+  });
+  const aciertos=Q.filter((x,i)=>ans[i]===x.c).length;
+  const sobre1000=Math.round(got/max*1000);
+  $("sc").textContent=sobre1000+" / 1000";
+  $("scd").textContent=`${aciertos} correctas de ${Q.length} (${Math.round(aciertos/Q.length*100)}%). Puntaje proporcional a la escala oficial de 1000 puntos (11 pts razonamiento, 13 pts conocimiento).`;
+  $("byT").innerHTML="<p><b>Por tema:</b> "+Object.entries(by).map(([t,v])=>`${esc(t)}: ${v.a}/${v.n}`).join(" · ")+"</p>";
+  $("rev").innerHTML=Q.map((x,i)=>{
+    const ok=ans[i]===x.c,u=ans[i];
+    return `<div class="rev card ${ok?"ok":"bad"}"><div class="topic">${esc(x.t)}</div><p class="q">${i+1}. ${esc(x.q)}</p>
+    <div>Tu respuesta: <span class="${ok?"ok-t":"bad-t"}">${u===null?"Sin responder":L[u]+") "+esc(x.o[u])}</span></div>
+    <div>Respuesta correcta: <span class="ok-t">${L[x.c]}) ${esc(x.o[x.c])}</span></div>
+    <div class="exp"><b>Solución:</b> ${esc(x.e)}</div></div>`}).join("");
+  show("res");window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
